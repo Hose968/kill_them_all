@@ -37,12 +37,16 @@ class Game:
             Player(
                 100, 100,
                 BLUE,
-                WASDControls()
+                WASDControls(),
+                100,
+                50
             ),
             Player(
                 100, 200,
                 GREEN,
-                ArrowsControls()
+                ArrowsControls(),
+                100,
+                50
             )
         ]
         self.blocks: list[Block] = [
@@ -60,9 +64,6 @@ class Game:
             ),
         ]
 
-        for block in self.blocks:
-            block.draw(self.screen)
-
         self.bullets: list[Bullet] = []
 
     def run(self):
@@ -79,27 +80,24 @@ class Game:
             
             for player in self.players:
                 player.reborn(keys)
-                player.take_hits(self.screen, self.bullets)
-                if not player.is_alive:
+                if player.is_dead:
                     player.remove(self.screen)
                     continue
+                player.take_hits(self.bullets)
                 player.move(self.blocks, keys)
                 self.bullets.extend(player.shoot(keys))
                 player.draw(self.screen)
 
             for block in self.blocks:
-                collided = block.rect.collidelist([bullet.rect for bullet in self.bullets])
-                if len(self.bullets) > 0 and collided != -1:
-                    bullet = self.bullets.pop(collided)
-                    bullet.remove(self.screen)
-
-                block.update(self.screen)
+                block.update(self.bullets)
+                block.draw(self.screen)
 
             for index, bullet in enumerate(self.bullets):
-                bullet.update(self.screen)
                 if bullet.remove_ready:
                     self.bullets.pop(index)
                     bullet.remove(self.screen)
+                else:
+                    bullet.update(self.screen)
 
             pygame.display.flip()
 
