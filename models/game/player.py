@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from models.game.movable import Movable
 
-from models.internal.configs import Shape, Controls
-from models.internal.literals import RED
+from models.internal.configs import Controls
+from models.internal.literals import RED, BLUE
 from models.game.bullet import Bullet
 
 from typing import Literal, TYPE_CHECKING
@@ -18,43 +18,73 @@ class Player(Movable):
         self, 
         x,y,
         color: tuple[int, int, int],
-        controls: Controls
+        controls: Controls,
+        health: int = 100,
+        armor: int = 0
     ):  
         super().__init__(x,y,26,40, color, 5)
 
         self.controls = controls
 
-        self.health = 100
-        self._max_health = 100
-
-        self.armor = 0
-        self._max_armor = 100
-
         self.score = 0
 
+        self.shoot_pressed = False
+
+        self.health = health
+        self.armor = armor
+
         self.starting_position = (x, y)
-        self.is_alive = True
         self.direction: tuple[bool, bool, bool, bool] = (False, True, False, False) # up, down, left, right
 
-    def draw(self, surface: pygame.Surface):
-        super().draw(surface)
+    @property
+    def is_dead(self):
+        return self.remove_ready
 
-    def update(self, surface: pygame.Surface, blocks: list[Block], bullets: list[Bullet], keys: list[bool]) -> list[Bullet]:
+    @is_dead.setter
+    def is_dead(self, value):
+        self.remove_ready = value
+
+    def update(self, bullets: list[Bullet], keys: list[bool]):
         self.reborn(keys)
-
-        if self.is_alive == False:
-            return bullets
-
         self.take_hits(bullets)
 
-        if self.health <= 0:
-            self.remove(surface)
-        else:
-            self.move(blocks, keys)
-            bullets = bullets.append(self.shoot(keys))
-            self.draw(surface)
+    def draw(self, surface: pygame.Surface):
+        # Draw hitbar above the player rectangle
+        hitbar_height = 5
+        hitbar_padding = 2
+        health_ratio = self.health / self.__max_health__
+        hitbar_width = int(self.rect.width * health_ratio)
+        
+        # Define the hitbar rectangle
+        hitbar_rect = pygame.Rect(
+            self.rect.x, 
+            self.rect.y - hitbar_height - hitbar_padding, 
+            hitbar_width, 
+            hitbar_height
+        )
+        
+        # Draw armor bar above the hitbar
+        armorbar_height = 5
+        armorbar_padding = 2
+        armor_ratio = self.armor / self.__max_armor__
+        armorbar_width = int(self.rect.width * armor_ratio)
+        
+        # Define the armorbar rectangle
+        armorbar_rect = pygame.Rect(
+            self.rect.x, 
+            self.rect.y - hitbar_height - armorbar_height - hitbar_padding - armorbar_padding, 
+            armorbar_width, 
+            armorbar_height
+        )
+        
 
-        return bullets
+        # Draw the hitbar
+        pygame.draw.rect(surface, RED, hitbar_rect)
+        # Draw the armorbar
+        pygame.draw.rect(surface, BLUE, armorbar_rect)
+
+        # Draw the player rectangle
+        super().draw(surface)
 
     def move(self, blocks: list[Block], keys: list[bool]):
         x = self.rect.x
@@ -104,19 +134,15 @@ class Player(Movable):
             self.rect.x += self.speed
             self.direction = (False, False, False, True)
 
-    def remove(self, surface: pygame.Surface):
-        self.is_alive = False
-        pygame.draw.circle(surface, RED, self.rect.center, self.rect.width // 2)
-
     def reborn(self, keys: list[bool]):
 
         if not keys[self.controls.reborn]:
             return
 
-        self.is_alive = True
+        self.is_dead = False
         self.rect.x, self.rect.y = self.starting_position
 
-        self.health = self._max_health
+        self.health = self.__max_health__
         self.armor = 0
 
         self.score = 0
@@ -125,7 +151,13 @@ class Player(Movable):
 
     def shoot(self, keys: list[bool]) -> list[Bullet]:
         if not keys[self.controls.shoot]:
+            self.shoot_pressed = False
             return []
+
+        if self.shoot_pressed:
+            return []
+
+        self.shoot_pressed = True
 
         direction: tuple[int, int] = (0, -1) # x, y 
 
@@ -148,16 +180,3 @@ class Player(Movable):
         bullet.parent_id = self.id
         
         return [bullet]
-
-    def take_hits(self,surface: pygame.Surface, bullets: list[Bullet]):
-        for bullet in bullets:
-
-            if not self.rect.colliderect(bullet.rect):
-                continue
-            if bullet.parent_id == self.id:
-                continue
-
-            self.health -= bullet.damage
-            if self.health <= 0:
-                self.is_alive = False
-            bullet.remove(surface=surface)
