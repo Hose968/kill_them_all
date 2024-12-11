@@ -5,7 +5,6 @@ import pygame
 import time
 
 from models.game.movable import Movable
-from models.internal.configs import Shape
 from models.game.block import Block
 from models.internal.literals import GRAY
 
@@ -25,12 +24,12 @@ class Bullet(Movable):
     
     def update(self, surface: pygame.Surface):
         self.move()
-        self.draw(surface)
 
         if time.time() - self._birth > 1:
             self.remove_ready = True
+        
+        self.draw(surface)
 
     def remove(self, surface: pygame.Surface = None):
         pygame.draw.circle(surface, GRAY, self.rect.center, self.rect.width // 2)
         pygame.display.flip()
-        self.remove_ready = True

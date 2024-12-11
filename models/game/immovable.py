@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from models.game.item import Item
-from models.internal.configs import Shape
 from typing import TYPE_CHECKING
 
 import pygame
